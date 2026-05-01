@@ -1,1 +1,43 @@
+#!/bin/bash -l
+#SBATCH -J hifiasm
+#SBATCH --output=hifiasm-%j.output
+#SBATCH --error=hifiasm-%j.error
+#SBATCH -t 24:00:00
+#SBATCH --partition=bml
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=plunarodriguez@ucdavis.edu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=100G
 
+#Genome assembly, this will create the raw assembly, it is only hifiasm
+
+set -euo pipefail
+
+echo "Starting at: $(date)"
+
+#Be aware to be inside the genome_assemblly_env conda environment where hifiasm is installed
+
+#Path to your HiFi data
+LONG_READ=/group/gmonroegrp2/chaehee/Pablo/pistacia/HiFi_reads/Patl.fastq.gz
+
+#Path to your output directory for the whole genome assebmly
+OUT_DIR=/group/gmonroegrp2/chaehee/Pablo/UCB1_hybridization/04_genome_assembly
+
+OUT_DIR01="${OUT_DIR}/01_raw_assembly"
+mkdir -p "$OUT_DIR01"
+OUT="${OUT_DIR01}/Patl_raw_assembly"
+
+#Assembler
+#--h-cov is because of kcov result from genomescope
+#--telo-m is the hightly conserved motif in flowering plants
+#-l 0 is to not remove any duplicated regions, this is important in plants due to repetitive regions
+
+hifiasm "$LONG_READ" -t 64 -o "$OUT" --hom-cov 35 -l 0 --telo-m CCCTAAA
+
+#Convert gfa files to .fasta files for next alignments
+awk '/^S/{print ">"$2"\n"$3}' "${OUT}.bp.hap1.p_ctg.gfa" > "${OUT}.hap1.fasta"
+awk '/^S/{print ">"$2"\n"$3}' "${OUT}.bp.hap2.p_ctg.gfa" > "${OUT}.hap2.fasta"
+
+echo "Finished at: $(date)"
